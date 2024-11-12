@@ -1,62 +1,48 @@
 #!/usr/bin/env python3
-"""Route module for the API."""
-from os import getenv
-from api.v1.views import app_views
-from flask import Flask, jsonify, abort, request
-from flask_cors import CORS
-
-app = Flask(__name__)
-app.register_blueprint(app_views)
-CORS(app, resources={r"/api/v1/*": {"origins": "*"}})
-
-auth = None
-
-auth_type = getenv('AUTH_TYPE', 'auth')
-if auth_type == 'basic_auth':
-    from api.v1.auth.basic_auth import BasicAuth
-    auth = BasicAuth()
-else:
-    from api.v1.auth.auth import Auth
-    auth = Auth()
+""" Module of Authentication
+"""
+from flask import request
+from typing import List, TypeVar
 
 
-@app.errorhandler(404)
-def not_found(error) -> str:
-    """Not found handler."""
-    return jsonify({"error": "Not found"}), 404
+class Auth:
+    """ Class to manage the API authentication """
 
+    def require_auth(self, path: str, excluded_paths: List[str]) -> bool:
+        """ Method for validating if endpoint requires auth """
+        if path is None or excluded_paths is None or excluded_paths == []:
+            return True
 
-@app.errorhandler(401)
-def unauthorized(error) -> str:
-    """Unauthorized handler."""
-    return jsonify({"error": "Unauthorized"}), 401
+        l_path = len(path)
+        if l_path == 0:
+            return True
 
+        slash_path = True if path[l_path - 1] == '/' else False
 
-@app.errorhandler(403)
-def forbidden(error) -> str:
-    """Forbidden handler."""
-    return jsonify({"error": "Forbidden"}), 403
+        tmp_path = path
+        if not slash_path:
+            tmp_path += '/'
 
+        for exc in excluded_paths:
+            l_exc = len(exc)
+            if l_exc == 0:
+                continue
 
-@app.before_request
-def before_request_handler():
-    """Handle request filtering before passing to view functions."""
-    if auth is None:
-        return
+            if exc[l_exc - 1] != '*':
+                if tmp_path == exc:
+                    return False
+            else:
+                if exc[:-1] == path[:l_exc - 1]:
+                    return False
 
-    excluded_paths = ['/api/v1/status/', '/api/v1/unauthorized/',
-                      '/api/v1/forbidden/']
-    if not auth.require_auth(request.path, excluded_paths):
-        return
+        return True
 
-    if auth.authorization_header(request) is None:
-        abort(401)
+    def authorization_header(self, request=None) -> str:
+        """ Method that handles authorization header """
+        if request is not None:
+            return request.headers.get('Authorization', None)
+        return None
 
-    if auth.current_user(request) is None:
-        abort(403)
-
-
-if __name__ == "__main__":
-    host = getenv("API_HOST", "0.0.0.0")
-    port = getenv("API_PORT", "5000")
-    app.run(host=host, port=port)
+    def current_user(self, request=None) -> TypeVar('User'):
+        """ Validates current user """
+        return None
