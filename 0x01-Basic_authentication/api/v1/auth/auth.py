@@ -10,8 +10,7 @@ class Auth:
     """Auth class for handling authorization"""
 
     def require_auth(self, path: str, excluded_paths: List[str]) -> bool:
-        """ Method to check if auth is required.
-        """
+        """Method to check if auth is required."""
         if path is None:
             return True
 
@@ -23,7 +22,6 @@ class Auth:
                 return False
 
         return True
-
 
     def authorization_header(self, request=None) -> Optional[str]:
         """Returns None for authorization header"""
