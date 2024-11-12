@@ -3,6 +3,7 @@
 
 from flask import request
 from typing import List, TypeVar, Optional
+import fnmatch
 
 
 class Auth:
@@ -10,7 +11,17 @@ class Auth:
 
     def require_auth(self, path: str, excluded_paths: List[str]) -> bool:
         """Returns False as authentication is not required"""
-        return False
+        if path is None:
+            return True
+
+        if excluded_paths is None or not excluded_path:
+            return True
+
+        for excluded_path in excluded_paths:
+            if fnmatch.fnmatch(path, excluded_path):
+                return False
+
+        return True
 
     def authorization_header(self, request=None) -> Optional[str]:
         """Returns None for authorization header"""
